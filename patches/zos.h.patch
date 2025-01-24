@@ -1,0 +1,30 @@
+diff --git a/zos.h b/zos.h
+new file mode 100644
+index 0000000..84c7b5b
+--- /dev/null
++++ b/zos.h
+@@ -0,0 +1,24 @@
++#ifndef __ZOS_H_
++#define __ZOS_H_
++#define ZOS_SIGN "\x7A\x6F\x73" // "zos"
++
++//----------------------------------------------------------
++// the place to remember info about tagging of unpacked file
++//
++typedef struct
++{
++    unsigned char   sign[4];
++    unsigned short  ft_ccsid;
++    unsigned short  reserv;
++
++} zos_extra_field_t;
++
++extern zos_extra_field_t zos_extra_field;
++//----------------------------------------------------------
++// return pointer to block with stored info
++//
++zos_extra_field_t *zos_get_extra_field()
++{
++    return &zos_extra_field;
++}
++#endif
