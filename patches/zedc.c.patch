@@ -1,0 +1,236 @@
+diff --git a/zedc.c b/zedc.c
+new file mode 100644
+index 0000000..86e2a23
+--- /dev/null
++++ b/zedc.c
+@@ -0,0 +1,230 @@
++/* zedc.c -- compress data using IBM zEnterprise Data Compression (zEDC).
++
++   Copyright (C) 2023 Rocket Software, Inc. */
++
++#include <config.h>
++
++#include <zlib.h>
++#include <zlibz.h>
++
++#include "tailor.h"
++#include "gzip.h"
++
++/* Do not replace functions names here. */
++#undef deflate
++#undef inflate
++
++
++/* ===========================================================================
++ * Checks if zEDC compression accelerator is available
++ * for a compress/decompress operation.
++ */
++int
++is_zedc_enabled (int decompress)
++{
++  return (decompress ? inflateHwAvail(OUTBUFSIZ) :
++                       deflateHwAvail(OUTBUFSIZ));
++}
++
++
++/* ===========================================================================
++ * Writes the specified number of bytes in the output global
++ * buffer to the output file.
++ */
++int
++zedc_write_buf (unsigned size, int update_crc)
++{
++  unsigned cnt;
++  uch *pbuf = outbuf;
++
++  if (update_crc)
++    updcrc(pbuf, size); /* update crc value for the output data (global variable) */
++
++  bytes_out += size; /* update the count of output bytes (global variable) */
++
++  if (!size || test) /* do not do any output in test mode or if there is no output data */
++    return OK;
++
++  /* Write the data to the output file. Do it in few steps, if
++   * necessary, until all <size> bytes are written to the file.
++   * Write at once not more that INT_MAX bytes. */
++  while ((cnt = write(ofd, (voidp)pbuf, (size>INT_MAX) ? INT_MAX : size)) != size)
++  {
++    if (cnt == (unsigned)(-1))
++      return ERROR;
++
++    size -= cnt;
++    pbuf += cnt;
++  }
++  return OK;
++}
++
++
++/* ===========================================================================
++ * Compresses input file using zEDC compression accelerator
++ * (via the interface provided by IBM zlib library).
++ */
++int
++zedc_deflate(int pack_level)
++{
++  int rc;
++  int flush = Z_NO_FLUSH; /* current flushing state for deflate(),
++                           * Z_NO_FLUSH - we have input data to compress */
++  z_stream strm = { Z_NULL }; /* used to pass information to and from the zlib
++                                 routines, and to maintain the deflate() state */
++
++  /* Initializes the internal stream state for compression:
++   *   - level=pack_level - ignored for zEDC,
++   *   - method=Z_DEFLATED - the only allowed value,
++   *   - windowBits=-15 - generate raw deflate data with no zlib header or trailer,
++   *   - memLevel=8 - ignored for zEDC, set to default value,
++   *   - strategy=Z_DEFAULT_STRATEGY - tune the compression algorithm, use default value. */
++    
++  rc = deflateInit2(&strm, pack_level, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY);
++
++
++  if(rc != Z_OK)
++  {
++    return ERROR; /* return in case of any initialization errors */
++  }
++  /* Read and compress all available input data. Before the loop
++   * input buffer is empty, no any input data was read yet. */
++  do
++  {
++    /* Fill the input empty buffer. */
++    if (fill_inbuf(1) == EOF)
++      flush = Z_FINISH; /* no more input data - change the value to finish deflate process */
++
++    inptr = 0; /* reset index of next byte to be processed in input buffer */
++
++    strm.avail_in = insize; /* size of available input data */
++    strm.next_in  = inbuf;  /* pointer to input data */
++
++    updcrc((uch*)inbuf, insize); /* update the crc of the input data */
++
++    /* The inner loop is repeated until the last deflate() call fails to
++     * fill the provided output buffer. Then we know that deflate() has done
++     * as much as it can with the provided input, and that all of that input
++     * has been consumed. We can then fall out of this loop and reuse the
++     * input buffer. */
++    do
++    {
++      strm.avail_out = OUTBUFSIZ; /* size of available memory in output buffer */
++      strm.next_out  = outbuf;    /* pointer to output buffer */
++
++      rc = deflate(&strm, flush); /* compress input data */
++      if(rc == Z_STREAM_ERROR) /* stream state was inconsistent */
++      {
++        deflateEnd(&strm);
++        return ERROR;
++      }
++
++      /* Write output buffer to file, do not update crc for the compressed data. */
++      if (zedc_write_buf(OUTBUFSIZ-strm.avail_out, 0) == ERROR)
++      {
++        deflateEnd(&strm);
++        write_error(); /* show the error and exit from the program */
++      }
++    } while (strm.avail_out == 0); /* finish the loop if we have free memory in output buffer */
++
++    /* All data from the input buffer must be read at
++     * that moment, otherwise return with the error. */
++    if (strm.avail_in > 0)
++    {
++      deflateEnd(&strm);
++      return ERROR;
++    }
++
++  } while (flush != Z_FINISH); /* finish the loop if there is no more input data */
++
++  if (rc != Z_STREAM_END) /* compression was not finished successfully */
++  {
++    deflateEnd(&strm);
++    return ERROR;
++  }
++
++  deflateEnd(&strm); /* free the allocated internal stream state */
++  return OK;
++}
++
++
++/* ===========================================================================
++ * Decompresses input file using zEDC compression accelerator
++ * (via the interface provided by IBM zlib library).
++ */
++int zedc_inflate()
++{
++	int rc;
++  z_stream strm = { Z_NULL }; /* used to pass information to and from the zlib
++                                 routines, and to maintain the inflate() state */
++
++  /* Initializes the internal stream state for decompression:
++   *   - windowBits=-15 - process raw inflate data without any headers and check values. */
++  rc = inflateInit2(&strm, -15);
++
++  if(rc != Z_OK)
++  {
++    return ERROR; /* return in case of any initialization errors */
++  }
++  /* Read and decompress all available compressed input data, ignore header
++   * and trailer. Before the loop input buffer already contains the beginning
++   * of the compressed data (it was read in get_method() in gzip.c).
++   * Index of next byte to be processed in input buffer <inptr> is already set
++   * to raw deflated data - start to handle that data. */
++  do
++  {
++    strm.avail_in = insize - inptr; /* size of available input data without gzip header */
++    strm.next_in  = inbuf + inptr;  /* pointer to raw deflated data (skip gzip header) */
++
++    /* The inner loop is repeated until the last inflate() call fails to fill
++     * the provided output buffer. It means inflate() generated all of the
++     * output it can with the provided input. */
++    do
++    {
++      strm.avail_out = OUTBUFSIZ; /* size of available memory in output buffer */
++      strm.next_out  = outbuf;    /* pointer to output buffer */
++
++      rc = inflate(&strm, Z_NO_FLUSH); /* decompress input data */
++      if ((rc != Z_OK) && (rc != Z_BUF_ERROR) && (rc != Z_STREAM_END)) /* check critical errors */
++      {
++        inflateEnd(&strm);
++        return ERROR;
++      }
++
++      /* Write output buffer to file, need to update crc for the uncompressed data. */
++      if (zedc_write_buf(OUTBUFSIZ-strm.avail_out, 1) == ERROR)
++      {
++        inflateEnd(&strm);
++        write_error(); /* show the error and exit from the program */
++      }
++
++    } while (strm.avail_out == 0); /* finish the loop if we have free memory in output buffer */
++
++    /* Fill the input empty buffer. */
++    inptr = insize; /* save the previous value of <insize> */
++    if (fill_inbuf(1) == EOF)
++    {
++      /* If there is no more input data we need to restore the previous value of
++       * <insize> (it was reset in fill_inbuf()) and to set correct value for
++       * <inptr> as the buffer still contains some trailing data after the end of
++       * the zlib stream, that will be handled after the current call.
++       * <strm.avail_in> at that moment should contain size of the trailing data. */
++      insize = inptr;
++      inptr -= strm.avail_in;
++      break; /* exit from the loop as there is no more input data */
++    }
++    inptr = 0; /* reset index of next byte to be processed in input buffer */
++
++    /* All data from the input buffer must be read at
++     * that moment, otherwise return with the error. */
++    if (strm.avail_in > 0)
++    {
++      inflateEnd(&strm);
++      return ERROR;
++    }
++
++  } while (rc != Z_STREAM_END); /* finish the loop if the input buffer contains the end of the zlib stream */
++
++	inflateEnd(&strm); /* free the allocated internal stream state */
++	return rc == Z_STREAM_END ? OK : ERROR;
++}
