@@ -1,0 +1,19 @@
+diff --git a/unzip.c b/unzip.c
+index 4927150..7c238f8 100644
+--- a/unzip.c
++++ b/unzip.c
+@@ -137,7 +137,13 @@ unzip (int in, int out)
+ #ifdef IBM_Z_DFLTCC
+         int res = dfltcc_inflate ();
+ #else
+-        int res = inflate();
++        int res;
++#ifdef __MVS__
++        if (zedc)
++          res = zedc_inflate();
++        else
++#endif /* __MVS__ */
++        res = inflate();
+ #endif
+ 
+         if (res == 3) {

@@ -1,5 +1,5 @@
 diff --git a/zip.c b/zip.c
-index 42ac886..f806730 100644
+index 42ac886..f5189ee 100644
 --- a/zip.c
 +++ b/zip.c
 @@ -22,6 +22,9 @@
@@ -26,7 +26,25 @@ index 42ac886..f806730 100644
      put_byte(flags);         /* general flags */
      if (time_stamp.tv_nsec < 0)
        stamp = 0;
-@@ -83,6 +93,17 @@ zip (int in, int out)
+@@ -72,17 +82,34 @@ zip (int in, int out)
+ 
+     /* Write deflated file to zip file */
+     updcrc (NULL, 0);
+-
++#ifdef __MVS__
++    if(!zedc)
++    {
++#endif
+     bi_init(out);
+     ct_init(&attr, &method);
+     if (level == 1)
+       deflate_flags |= FAST;
+     else if (level == 9)
+       deflate_flags |= SLOW;
++#ifdef __MVS__
++    }
++#endif
+ 
      put_byte((uch)deflate_flags); /* extra flags */
      put_byte(OS_CODE);            /* OS identifier */
  
@@ -44,3 +62,20 @@ index 42ac886..f806730 100644
      if (save_orig_name) {
          char *p = gzip_base_name (ifname); /* Don't save the directory part. */
          do {
+@@ -94,7 +121,15 @@ zip (int in, int out)
+ #ifdef IBM_Z_DFLTCC
+     dfltcc_deflate (level);
+ #else
+-    deflate (level);
++#ifdef __MVS__
++    if (zedc)
++    {
++      flush_outbuf();
++      zedc_deflate (level);
++    }
++    else
++#endif /* __MVS__ */
++      deflate (level);
+ #endif
+ 
+ #ifndef NO_SIZE_CHECK

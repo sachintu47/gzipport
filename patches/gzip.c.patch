@@ -1,8 +1,19 @@
 diff --git a/gzip.c b/gzip.c
-index 6cd8b1b..024115f 100644
+index 6cd8b1b..c6243de 100644
 --- a/gzip.c
 +++ b/gzip.c
-@@ -225,6 +225,54 @@ unsigned inptr;            /* index of next byte to be processed in inbuf */
+@@ -190,7 +190,9 @@ static int part_nb;          /* number of parts in .gz file */
+ static char *env;            /* contents of GZIP env variable */
+ static char const *z_suffix; /* default suffix (can be set with --suffix) */
+ static size_t z_len;         /* strlen(z_suffix) */
+-
++#ifdef __MVS__
++       int zedc = 1;         /* use IBM Z hardware compression (zEDC) by default*/
++#endif
+ /* The original timestamp (modification time).  If the original is
+    unknown, TIME_STAMP.tv_nsec is negative.  If the original is
+    greater than struct timespec range, TIME_STAMP is the maximal
+@@ -225,6 +227,54 @@ unsigned inptr;            /* index of next byte to be processed in inbuf */
  unsigned outcnt;           /* bytes in output buffer */
  int rsync = 0;             /* make rsyncable chunks */
  
@@ -57,7 +68,65 @@ index 6cd8b1b..024115f 100644
  static int handled_sig[] =
    {
      /* SIGINT must be first, as 'foreground' depends on it.  */
-@@ -770,6 +818,13 @@ treat_stdin ()
+@@ -254,14 +304,15 @@ enum
+   PRESUME_INPUT_TTY_OPTION = CHAR_MAX + 1,
+   RSYNCABLE_OPTION,
+   SYNCHRONOUS_OPTION,
+-
++#ifdef  __MVS__
++  NO_ZEDC_OPTION,
++#endif
+   /* A value greater than all valid long options, used as a flag to
+      distinguish options derived from the GZIP environment variable.  */
+   ENV_OPTION
+ };
+ 
+ static char const shortopts[] = "ab:cdfhH?klLmMnNqrS:tvVZ123456789";
+-
+ static const struct option longopts[] =
+ {
+  /* { name  has_arg  *flag  val } */
+@@ -293,6 +344,9 @@ static const struct option longopts[] =
+     {"lzw",        0, 0, 'Z'}, /* make output compatible with old compress */
+     {"bits",       1, 0, 'b'}, /* max number of bits per code (implies -Z) */
+     {"rsyncable",  0, 0, RSYNCABLE_OPTION}, /* make rsync-friendly archive */
++#ifdef	__MVS__
++    {"nz",         0, 0, NO_ZEDC_OPTION}, /* Dont use IBM Z hardware compression (zEDC) */
++#endif
+     { 0, 0, 0, 0 }
+ };
+ 
+@@ -374,6 +428,9 @@ help ()
+  "  -t, --test        test compressed file integrity",
+  "  -v, --verbose     verbose mode",
+  "  -V, --version     display version number",
++#ifdef __MVS__
++ "      --nz          Dont use IBM Z hardware compression/decompression (zEDC) by default",
++#endif
+  "  -1, --fast        compress faster",
+  "  -9, --best        compress better",
+  "",
+@@ -392,7 +449,6 @@ static void
+ license ()
+ {
+     char const *const *p = license_msg;
+-
+     printf ("%s %s\n", program_name, Version);
+     while (*p) printf ("%s\n", *p++);
+ }
+@@ -593,6 +649,11 @@ int main (int argc, char **argv)
+         case '5':  case '6':  case '7':  case '8':  case '9':
+             level = optc - '0';
+             break;
++#ifdef  __MVS__
++	case NO_ZEDC_OPTION:
++	    zedc = 0;
++	    break;
++#endif
+ 
+         default:
+             if (ENV_OPTION <= optc && optc != ENV_OPTION + '?')
+@@ -770,6 +831,13 @@ treat_stdin ()
      ifd = STDIN_FILENO;
      stdin_was_read = true;
  
@@ -71,7 +140,7 @@ index 6cd8b1b..024115f 100644
      if (decompress) {
          method = get_method(ifd);
          if (method < 0) {
-@@ -952,6 +1007,12 @@ treat_file (char *iname)
+@@ -952,6 +1020,12 @@ treat_file (char *iname)
      clear_bufs(); /* clear input and output buffers */
      part_nb = 0;
  
@@ -84,7 +153,7 @@ index 6cd8b1b..024115f 100644
      if (decompress) {
          method = get_method(ifd); /* updates ofname if original given */
          if (method < 0) {
-@@ -975,6 +1036,17 @@ treat_file (char *iname)
+@@ -975,6 +1049,17 @@ treat_file (char *iname)
                      program_name, ifname, ofname);
          }
      }
@@ -102,7 +171,7 @@ index 6cd8b1b..024115f 100644
      /* Keep the name even if not truncated except with --no-name: */
      if (!save_orig_name) save_orig_name = !no_name;
  
-@@ -1586,6 +1658,17 @@ get_method (int in)
+@@ -1586,6 +1671,17 @@ get_method (int in)
              uch lenbuf[2];
              unsigned int len = lenbuf[0] = get_byte ();
              len |= (lenbuf[1] = get_byte ()) << 8;
@@ -120,7 +189,7 @@ index 6cd8b1b..024115f 100644
              if (verbose) {
                  fprintf(stderr,"%s: %s: extra field of %u bytes ignored\n",
                          program_name, ifname, len);
-@@ -1593,6 +1676,7 @@ get_method (int in)
+@@ -1593,6 +1689,7 @@ get_method (int in)
              if (flags & HEADER_CRC)
                updcrc (lenbuf, 2);
              discard_input_bytes (len, flags);
