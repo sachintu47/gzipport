@@ -1,20 +1,8 @@
 diff --git a/gzip.h b/gzip.h
-index b26bc4f..1130265 100644
+index 855a88b..9b00fa8 100644
 --- a/gzip.h
 +++ b/gzip.h
-@@ -38,6 +38,11 @@
- #include <sys/types.h> /* for off_t */
- #include <time.h>
- #include <string.h>
-+#ifdef __MVS__
-+/* Rename gzip functions to avoid conflicts with zlib functions. */
-+#define deflate gzip_deflate
-+#define inflate gzip_inflate
-+#endif /* __MVS__ */
- #define memzero(s, n) memset ((voidp)(s), 0, (n))
- 
- typedef unsigned char  uch;
-@@ -193,6 +198,9 @@ extern int level;          /* compression level */
+@@ -192,6 +192,9 @@ extern int level;          /* compression level */
  extern int test;           /* check .z file integrity */
  extern int to_stdout;      /* output to stdout (-c) */
  extern int save_orig_name; /* set if original name must be saved */
@@ -24,7 +12,7 @@ index b26bc4f..1130265 100644
  
  #define get_byte()  (inptr < insize ? inbuf[inptr++] : fill_inbuf(0))
  #define try_byte()  (inptr < insize ? inbuf[inptr++] : fill_inbuf(1))
-@@ -332,3 +340,7 @@ extern int inflate (void);
+@@ -330,3 +333,7 @@ extern int gzip_inflate (void);
  extern int dfltcc_deflate (int pack_level);
  extern int dfltcc_inflate (void);
  #endif
