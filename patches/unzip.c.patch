@@ -1,19 +1,24 @@
 diff --git a/unzip.c b/unzip.c
-index 4927150..7c238f8 100644
+index 9880408..fb33040 100644
 --- a/unzip.c
 +++ b/unzip.c
-@@ -137,7 +137,13 @@ unzip (int in, int out)
+@@ -133,11 +133,16 @@ unzip (int in, int out)
+ 
+     /* Decompress */
+     if (method == DEFLATED)  {
+-
++	int res;
  #ifdef IBM_Z_DFLTCC
-         int res = dfltcc_inflate ();
+-        int res = dfltcc_inflate ();
++        res = dfltcc_inflate ();
  #else
--        int res = inflate();
-+        int res;
+-        int res = gzip_inflate ();
 +#ifdef __MVS__
-+        if (zedc)
++	if (zedc)
 +          res = zedc_inflate();
 +        else
-+#endif /* __MVS__ */
-+        res = inflate();
++#endif
++        res = gzip_inflate ();
  #endif
  
          if (res == 3) {

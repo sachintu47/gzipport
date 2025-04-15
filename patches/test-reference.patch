@@ -1,0 +1,37 @@
+diff --git a/tests/reference b/tests/reference
+index add962e..c28716a 100755
+--- a/tests/reference
++++ b/tests/reference
+@@ -1,4 +1,5 @@
+ #!/bin/sh
++set -x
+ # Ensure that reference compressed files are still decompressible, and
+ # that their corresponding inputs still compress to precisely the same bytes.
+ # For a "normal" compression program, one must not require that the encoded
+@@ -30,6 +31,18 @@
+ 
+ fail=0
+ 
++sysname=$(uname)
++
++if [ "$sysname" = "OS/390" ]; then
++cat <<EOF > exp || framework_failure_
++: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 03 00 00 00 00 00 00 00 00 00
++a: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 02 28 11 10 00 00 ff ff 43 be b7 e8 01 00 00 00
++b: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 02 28 09 10 00 00 ff ff f9 ef be 71 01 00 00 00
++c: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 02 28 19 10 00 00 ff ff 6f df b9 06 01 00 00 00
++yyy: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 02 a8 b2 b2 12 10 00 00 ff ff ea 81 45 73 03 00 00 00
++zzzzzzzzzzz: 1f 8b 08 04 00 00 00 00 00 03 08 00 7a 6f 73 00 03 33 00 00 02 a8 0a 01 00 01 00 00 ff ff 55 97 5b a7 0b 00 00 00
++EOF
++else
+ cat <<EOF > exp || framework_failure_
+ : 1f 8b 08 00 00 00 00 00 00 03 03 00 00 00 00 00 00 00 00 00
+ a: 1f 8b 08 00 00 00 00 00 00 03 4b 04 00 43 be b7 e8 01 00 00 00
+@@ -38,6 +51,7 @@ c: 1f 8b 08 00 00 00 00 00 00 03 4b 06 00 6f df b9 06 01 00 00 00
+ yyy: 1f 8b 08 00 00 00 00 00 00 03 ab ac ac 04 00 ea 81 45 73 03 00 00 00
+ zzzzzzzzzzz: 1f 8b 08 00 00 00 00 00 00 03 ab aa 82 03 00 55 97 5b a7 0b 00 00 00
+ EOF
++fi
+ 
+ # Ensure that compressing these simple strings always produces the same bytes.
+ # If using "od" is not portable enough, consider using this:

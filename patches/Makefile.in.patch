@@ -1,8 +1,8 @@
 diff --git a/Makefile.in b/Makefile.in
-index d11de15..df3fd71 100644
+index 3f554de..b8d1d5f 100644
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -238,12 +238,12 @@ libver_a_LIBADD =
+@@ -242,12 +242,12 @@ libver_a_LIBADD =
  nodist_libver_a_OBJECTS = version.$(OBJEXT)
  libver_a_OBJECTS = $(nodist_libver_a_OBJECTS)
  am__gzip_SOURCES_DIST = bits.c deflate.c gzip.c inflate.c trees.c \
@@ -17,7 +17,7 @@ index d11de15..df3fd71 100644
  gzip_OBJECTS = $(am_gzip_OBJECTS)
  am__DEPENDENCIES_1 =
  gzip_DEPENDENCIES = libver.a lib/libgzip.a $(am__DEPENDENCIES_1) \
-@@ -295,7 +295,7 @@ am__depfiles_remade = ./$(DEPDIR)/bits.Po ./$(DEPDIR)/deflate.Po \
+@@ -299,7 +299,7 @@ am__depfiles_remade = ./$(DEPDIR)/bits.Po ./$(DEPDIR)/deflate.Po \
  	./$(DEPDIR)/inflate.Po ./$(DEPDIR)/trees.Po \
  	./$(DEPDIR)/unlzh.Po ./$(DEPDIR)/unlzw.Po \
  	./$(DEPDIR)/unpack.Po ./$(DEPDIR)/unzip.Po ./$(DEPDIR)/util.Po \
@@ -26,7 +26,7 @@ index d11de15..df3fd71 100644
  am__mv = mv -f
  COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
  	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-@@ -1738,7 +1738,7 @@ top_srcdir = @top_srcdir@
+@@ -1838,7 +1838,7 @@ top_srcdir = @top_srcdir@
  ALL_RECURSIVE_TARGETS = distcheck-hook
  BUILT_SOURCES = version.c version.h $(am__append_2) $(am__append_4) \
  	$(am__append_6)
@@ -35,16 +35,16 @@ index d11de15..df3fd71 100644
  AM_CPPFLAGS = -I$(top_srcdir)/lib
  AM_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
  
-@@ -1771,7 +1771,7 @@ bin_SCRIPTS = gunzip gzexe zcat zcmp zdiff \
+@@ -1871,7 +1871,7 @@ bin_SCRIPTS = gunzip gzexe zcat zcmp zdiff \
    zegrep zfgrep zforce zgrep $(ZLESS_PROG) zmore znew
  
  gzip_SOURCES = bits.c deflate.c gzip.c inflate.c trees.c unlzh.c \
 -	unlzw.c unpack.c unzip.c util.c zip.c $(am__append_1)
-+	unlzw.c unpack.c unzip.c util.c zip.c zedc.c $(am__append_1)
- gzip_LDADD = libver.a lib/libgzip.a $(LIB_CLOCK_GETTIME) \
- 	$(LIB_FDATASYNC)
++	unlzw.c unpack.c unzip.c util.c zedc.c zip.c $(am__append_1)
+ gzip_LDADD = libver.a lib/libgzip.a $(CLOCK_TIME_LIB) $(FDATASYNC_LIB)
  SUFFIXES = .in
-@@ -1935,6 +1935,7 @@ distclean-compile:
+ gen_start_date = 2008-01-01
+@@ -2034,6 +2034,7 @@ distclean-compile:
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@ # am--include-marker
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zip.Po@am__quote@ # am--include-marker
@@ -52,7 +52,7 @@ index d11de15..df3fd71 100644
  
  $(am__depfiles_remade):
  	@$(MKDIR_P) $(@D)
-@@ -2372,6 +2373,7 @@ distclean: distclean-recursive
+@@ -2477,6 +2478,7 @@ distclean: distclean-recursive
  	-rm -f ./$(DEPDIR)/util.Po
  	-rm -f ./$(DEPDIR)/version.Po
  	-rm -f ./$(DEPDIR)/zip.Po
@@ -60,7 +60,7 @@ index d11de15..df3fd71 100644
  	-rm -f Makefile
  distclean-am: clean-am distclean-compile distclean-generic \
  	distclean-tags
-@@ -2433,6 +2435,7 @@ maintainer-clean: maintainer-clean-recursive
+@@ -2538,6 +2540,7 @@ maintainer-clean: maintainer-clean-recursive
  	-rm -f ./$(DEPDIR)/util.Po
  	-rm -f ./$(DEPDIR)/version.Po
  	-rm -f ./$(DEPDIR)/zip.Po
